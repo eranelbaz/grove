@@ -52,6 +52,16 @@ require_repo() {
 # The MAIN working tree, even if grove is invoked from inside a worktree.
 main_root() { git worktree list --porcelain | awk '/^worktree /{print $2; exit}'; }
 
+# Print absolute path of the worktree that has <branch> checked out, or empty.
+_worktree_path_for() {
+  local branch="$1"
+  git worktree list --porcelain 2>/dev/null \
+    | awk -v b="refs/heads/$branch" '
+        /^worktree / { path = substr($0, 10) }
+        $0 == "branch " b { print path; exit }
+      '
+}
+
 # Best-effort default base: origin/HEAD → main → master → empty.
 _default_base() {
   local b=""
