@@ -91,6 +91,31 @@ assert_empty "$out_dangling" 'branch with no worktree returns empty'
 out_missing="$(cd "$wt_repo" && _worktree_path_for never-existed)"
 assert_empty "$out_missing" 'unknown branch returns empty'
 
+# === cmd_migrate: relocate to canonical .worktrees/<branch> ===
+printf '\n\033[1mcmd_migrate happy path\033[0m\n'
+
+mv_repo="$(new_repo migrate-happy)"
+(
+  cd "$mv_repo"
+  git branch feature-a
+  git worktree add -q "$TMP/feature-a-external" feature-a
+) >/dev/null
+
+(
+  cd "$mv_repo"
+  cmd_migrate feature-a
+) > "$TMP/migrate-happy.out" 2>&1
+
+assert_eq "$(test -d "$mv_repo/.worktrees/feature-a" && echo yes || echo no)" 'yes' 'worktree exists at canonical path'
+assert_eq "$(test -d "$TMP/feature-a-external" && echo yes || echo no)" 'no' 'old path is gone'
+assert_contains "$(cat "$TMP/migrate-happy.out")" 'migrated' 'announces the move'
+
+new_path="$(cd "$mv_repo" && _worktree_path_for feature-a)"
+assert_eq "$new_path" "$mv_repo/.worktrees/feature-a" 'git now reports the new path'
+
+# .gitignore-side exclusion is in place
+assert_contains "$(cat "$mv_repo/.git/info/exclude")" '.worktrees/' '.worktrees/ is excluded'
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 if [ "$FAIL" -gt 0 ]; then
   printf '\nfailed:\n'

@@ -184,6 +184,24 @@ cmd_attach() {
   _start_session "$branch" "$wt" "$base"
 }
 
+cmd_migrate() {
+  [ $# -ge 1 ] || die "usage: grove migrate <branch>"
+  require_repo
+  local branch="$1"
+  local root src dst
+  root="$(main_root)"; dst="$root/.worktrees/$branch"
+
+  src="$(_worktree_path_for "$branch")"
+  [ -n "$src" ] || die "no worktree for branch '$branch' — use: grove attach $branch"
+  [ "$src" = "$dst" ] && { info "already at $dst — nothing to migrate"; return 0; }
+  [ -e "$dst" ] && die "destination already exists: $dst"
+
+  ensure_excluded "$root"
+  mkdir -p "$root/.worktrees"
+  git worktree move "$src" "$dst"
+  info "migrated $branch from $src to $dst"
+}
+
 cmd_list() {
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     _list_repo
@@ -446,6 +464,7 @@ main() {
     base)           shift; cmd_base "$@" ;;
     reset)          shift; cmd_reset "$@" ;;
     init)           shift; cmd_init "$@" ;;
+    migrate|mv)     shift; cmd_migrate "$@" ;;
     _diff-pane)     shift; _cmd_diff_pane "$@" ;;
     help|-h|--help) usage ;;
     *)              die "unknown command '$cmd' — try: grove help" ;;
