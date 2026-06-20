@@ -161,11 +161,18 @@ cmd_create() {
 
 cmd_attach() {
   [ $# -ge 1 ] || die "usage: grove attach <branch>"
-  command -v tmux >/dev/null 2>&1 || die "tmux is not installed"
   require_repo
   local branch="$1"
   local root wt session base
   root="$(main_root)"; wt="$root/.worktrees/$branch"
+
+  local existing_path
+  existing_path="$(_worktree_path_for "$branch")"
+  if [ -n "$existing_path" ] && [ "$existing_path" != "$wt" ]; then
+    die "branch '$branch' is already checked out at $existing_path — use: grove migrate $branch"
+  fi
+
+  command -v tmux >/dev/null 2>&1 || die "tmux is not installed"
   session="$(_session_for "$branch")"
   base="$(_default_base)"
 

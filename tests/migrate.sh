@@ -208,6 +208,30 @@ assert_contains "$(cat "$TMP/all.out")" 'two' 'output names branch two'
 n_already="$(grep -c 'already at' "$TMP/all.out" || true)"
 assert_eq "$n_already" '0' 'canonical branch not listed as already-at'
 
+# === cmd_attach hint when branch is checked out elsewhere ===
+printf '\n\033[1mcmd_attach hint\033[0m\n'
+
+hint_repo="$(new_repo attach-hint)"
+(
+  cd "$hint_repo"
+  git branch feature-hint
+  git worktree add -q "$TMP/feature-hint-external" feature-hint
+) >/dev/null
+
+# avoid real tmux invocation in cmd_attach by stubbing tmux to be absent.
+# easier: temporarily shadow PATH so tmux isn't found, which makes cmd_attach
+# die early with "tmux is not installed" UNLESS we hit our new short-circuit first.
+# instead, just call the worktree-add path directly by setting up the conditions
+# and trapping the exit.
+set +e
+out_hint="$( cd "$hint_repo" && PATH=/usr/bin:/bin cmd_attach feature-hint 2>&1 )"
+rc_hint=$?
+set -e
+
+assert_eq "$rc_hint" '1' 'attach with elsewhere-checkout exits non-zero'
+assert_contains "$out_hint" 'grove migrate feature-hint' 'attach hints at grove migrate'
+assert_contains "$out_hint" "$TMP/feature-hint-external" 'attach names the conflicting path'
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 if [ "$FAIL" -gt 0 ]; then
   printf '\nfailed:\n'
