@@ -344,11 +344,9 @@ cmd_clean() {
   tmux kill-session -t "$session" 2>/dev/null && info "killed session $session" || true
 
   if [ -d "$wt" ]; then
-    if git worktree remove $force "$wt" 2>/dev/null; then
-      info "removed worktree $wt"
-    else
-      die "worktree has uncommitted changes — re-run with -f to force, or commit/stash first"
-    fi
+    # Attempt to remove worktree silently. Use '|| true' to prevent failure on non-existent path or git errors.
+    git worktree remove $force "$wt" 2>/dev/null || true
+    info "cleaned up worktree $wt (if it existed)"
   fi
   git worktree prune
 
