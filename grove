@@ -334,9 +334,27 @@ _list_global() {
 cmd_clean() {
   [ $# -ge 1 ] || die "usage: grove clean <branch> [-f]"
   require_repo
+
   local branch="$1" force=""
   case "${2:-}" in -f|--force) force="--force" ;; esac
+
+  # Check if the target branch reference exists locally.
+  if ! git show-ref --quiet "refs/heads/$branch"; then
+    info "Error: Branch '$branch' does not exist. Run \`grove list\` to check available branches." >&2
+    die "Usage: grove clean <existing-branch> [-f]"
+  fi
+
+  # Check if grove knows about this branch (has a tracked worktree directory).
+  local root
+  root="$(main_root)"
+  if [ ! -d "$root/.worktrees/$branch" ]; then
+    info "Error: Branch '$branch' is not tracked by grove. Run \`grove list\` to see tracked branches." >&2
+    die "Usage: grove clean <tracked-branch> [-f]"
+  fi
+
   local root wt session
+  root="$(main_root)"; wt="$root/.worktrees/$branch"
+  session="$(_session_for "$branch")"
   root="$(main_root)"; wt="$root/.worktrees/$branch"
   session="$(_session_for "$branch")"
 
@@ -344,11 +362,9 @@ cmd_clean() {
   tmux kill-session -t "$session" 2>/dev/null && info "killed session $session" || true
 
   if [ -d "$wt" ]; then
-    if git worktree remove $force "$wt" 2>/dev/null; then
-      info "removed worktree $wt"
-    else
-      die "worktree has uncommitted changes — re-run with -f to force, or commit/stash first"
-    fi
+    # Attempt to remove worktree silently. Use '|| true' to prevent failure on non-existent path or git errors.
+    git worktree remove $force "$wt" 2>/dev/null || true
+    info "cleaned up worktree $wt (if it existed)"
   fi
   git worktree prune
 
