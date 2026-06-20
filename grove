@@ -24,6 +24,13 @@
 #                                        the session for that worktree. Custom panes
 #                                        you added are left alone.
 #   grove init                           Scaffold setup.sh + teardown.sh hooks for this repo.
+#   grove migrate <branch> [-f]          Move <branch>'s existing worktree into
+#                                        .worktrees/<branch> via git worktree move.
+#                                        -f passes --force through (allows dirty trees,
+#                                        skips lock check).
+#   grove migrate <branch> --adopt       Don't move — register the existing path with
+#                                        grove and (re)launch the tmux session there.
+#   grove migrate --all [-f]             Sweep every out-of-place worktree in this repo.
 #   grove help
 #
 # Every session opens with a small right-hand pane showing the changed files vs <base>

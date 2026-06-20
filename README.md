@@ -40,6 +40,10 @@ grove reset [<branch>]                Kill and respawn the right-side diff pane.
                                       Custom panes you added are left alone.
 grove init                            Scaffold setup.sh / teardown.sh hooks for
                                       the current repo.
+grove migrate <branch> [-f]           Relocate <branch>'s worktree into
+                                      .worktrees/<branch>. -f allows dirty trees.
+grove migrate <branch> --adopt        Adopt the existing path without moving.
+grove migrate --all [-f]              Sweep every out-of-place worktree in the repo.
 grove help
 ```
 
