@@ -185,8 +185,36 @@ cmd_attach() {
 }
 
 cmd_migrate() {
-  [ $# -ge 1 ] || die "usage: grove migrate <branch> [-f|--adopt]"
+  [ $# -ge 1 ] || die "usage: grove migrate <branch> [-f|--adopt]  |  grove migrate --all [-f]"
   require_repo
+  local root; root="$(main_root)"
+
+  if [ "$1" = "--all" ]; then
+    shift
+    local force_flag=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        -f|--force) force_flag="-f" ;;
+        *)          die "unknown option for --all: $1" ;;
+      esac
+      shift
+    done
+    local any_fail=0 path branch
+    while IFS= read -r path; do
+      [ -z "$path" ] && continue
+      case "$path" in
+        "$root"/.worktrees/*) continue ;;
+        "$root") continue ;;
+      esac
+      branch="$(git -C "$path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+      [ -z "$branch" ] || [ "$branch" = "HEAD" ] && continue
+      if ! ( cmd_migrate "$branch" $force_flag ); then
+        any_fail=1
+      fi
+    done < <(git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}')
+    return "$any_fail"
+  fi
+
   local branch="$1" force=0 adopt=0
   shift
   while [ $# -gt 0 ]; do
@@ -198,8 +226,8 @@ cmd_migrate() {
     shift
   done
 
-  local root src dst
-  root="$(main_root)"; dst="$root/.worktrees/$branch"
+  local src dst
+  dst="$root/.worktrees/$branch"
 
   src="$(_worktree_path_for "$branch")"
   [ -n "$src" ] || die "no worktree for branch '$branch' — use: grove attach $branch"

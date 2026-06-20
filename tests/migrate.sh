@@ -180,6 +180,34 @@ assert_eq "$(test -d "$TMP/feature-adopt-external" && echo yes || echo no)" 'yes
 assert_eq "$(test -d "$adopt_repo/.worktrees/feature-adopt" && echo yes || echo no)" 'no' 'adopt does not create canonical path'
 assert_contains "$(cat "$TMP/adopt.out")" 'adopted' 'adopt announces itself'
 
+# === cmd_migrate --all: sweep every out-of-place worktree ===
+printf '\n\033[1mcmd_migrate --all\033[0m\n'
+
+all_repo="$(new_repo migrate-all)"
+(
+  cd "$all_repo"
+  git branch one; git branch two; git branch three
+  git worktree add -q "$TMP/external-one"   one
+  git worktree add -q "$TMP/external-two"   two
+  git worktree add -q "$all_repo/.worktrees/three" three
+) >/dev/null
+
+(
+  cd "$all_repo"
+  cmd_migrate --all
+) > "$TMP/all.out" 2>&1
+
+assert_eq "$(test -d "$all_repo/.worktrees/one" && echo yes || echo no)" 'yes' '--all migrated branch one'
+assert_eq "$(test -d "$all_repo/.worktrees/two" && echo yes || echo no)" 'yes' '--all migrated branch two'
+assert_eq "$(test -d "$TMP/external-one" && echo yes || echo no)" 'no' 'external-one removed'
+assert_eq "$(test -d "$TMP/external-two" && echo yes || echo no)" 'no' 'external-two removed'
+assert_contains "$(cat "$TMP/all.out")" 'one' 'output names branch one'
+assert_contains "$(cat "$TMP/all.out")" 'two' 'output names branch two'
+
+# branch three was already canonical — should be skipped silently
+n_already="$(grep -c 'already at' "$TMP/all.out" || true)"
+assert_eq "$n_already" '0' 'canonical branch not listed as already-at'
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 if [ "$FAIL" -gt 0 ]; then
   printf '\nfailed:\n'
