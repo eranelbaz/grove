@@ -232,6 +232,79 @@ assert_eq "$rc_hint" '1' 'attach with elsewhere-checkout exits non-zero'
 assert_contains "$out_hint" 'grove migrate feature-hint' 'attach hints at grove migrate'
 assert_contains "$out_hint" "$TMP/feature-hint-external" 'attach names the conflicting path'
 
+# === cmd_migrate edge cases ===
+printf '\n\033[1mcmd_migrate edge cases\033[0m\n'
+
+edge_repo="$(new_repo migrate-edges)"
+
+# 1. no args → usage error
+set +e
+out_no_args="$(cd "$edge_repo" && cmd_migrate 2>&1)"
+rc_no_args=$?
+set -e
+assert_eq "$rc_no_args" '1' 'no args exits non-zero'
+assert_contains "$out_no_args" 'usage:' 'no args prints usage'
+
+# 2. unknown option → die
+(
+  cd "$edge_repo"
+  git branch edge-known
+  git worktree add -q "$TMP/edge-external" edge-known
+) >/dev/null
+set +e
+out_unknown="$(cd "$edge_repo" && cmd_migrate edge-known --bogus --no-session 2>&1)"
+rc_unknown=$?
+set -e
+assert_eq "$rc_unknown" '1' 'unknown option exits non-zero'
+assert_contains "$out_unknown" 'unknown option' 'unknown option names itself'
+assert_eq "$(test -d "$TMP/edge-external" && echo yes || echo no)" 'yes' 'unknown option does not move'
+
+# 3. already-canonical → no-op success
+(
+  cd "$edge_repo"
+  git branch edge-canon
+  git worktree add -q "$edge_repo/.worktrees/edge-canon" edge-canon
+) >/dev/null
+out_canon="$(cd "$edge_repo" && cmd_migrate edge-canon --no-session 2>&1)"
+assert_contains "$out_canon" 'already at' 'canonical path reports already-at'
+assert_eq "$(test -d "$edge_repo/.worktrees/edge-canon" && echo yes || echo no)" 'yes' 'canonical path still present'
+
+# 4. destination directory exists as a stray (not a registered worktree) → die
+(
+  cd "$edge_repo"
+  git branch edge-blocked
+  git worktree add -q "$TMP/edge-blocked-src" edge-blocked
+  mkdir -p "$edge_repo/.worktrees/edge-blocked"
+  echo squatter > "$edge_repo/.worktrees/edge-blocked/file.txt"
+) >/dev/null
+set +e
+out_blocked="$(cd "$edge_repo" && cmd_migrate edge-blocked --no-session 2>&1)"
+rc_blocked=$?
+set -e
+assert_eq "$rc_blocked" '1' 'stray destination exits non-zero'
+assert_contains "$out_blocked" 'destination already exists' 'stray dest message'
+assert_eq "$(test -d "$TMP/edge-blocked-src" && echo yes || echo no)" 'yes' 'source untouched on dest conflict'
+rm -rf "$edge_repo/.worktrees/edge-blocked"
+
+# 5. --all skips the main worktree (never tries to migrate `main`)
+(
+  cd "$edge_repo"
+  git branch edge-sweep
+  git worktree add -q "$TMP/edge-sweep-external" edge-sweep
+) >/dev/null
+out_all="$(cd "$edge_repo" && cmd_migrate --all 2>&1)"
+assert_eq "$(echo "$out_all" | grep -c 'migrated main')" '0' '--all does not migrate main'
+assert_contains "$out_all" 'edge-sweep' '--all does migrate other branches'
+
+# 6. --all with nothing to do exits 0 silently
+clean_repo="$(new_repo migrate-nothing)"
+set +e
+out_nothing="$(cd "$clean_repo" && cmd_migrate --all 2>&1)"
+rc_nothing=$?
+set -e
+assert_eq "$rc_nothing" '0' '--all with nothing to do exits 0'
+assert_eq "$(echo "$out_nothing" | grep -c 'migrated')" '0' '--all with nothing prints no migrated lines'
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 if [ "$FAIL" -gt 0 ]; then
   printf '\nfailed:\n'
