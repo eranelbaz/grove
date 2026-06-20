@@ -490,6 +490,19 @@ _render_branch_status() {
   printf '  \033[32m↑ %s ahead\033[0m  \033[31m↓ %s behind\033[0m\n' "$ahead" "$behind"
 }
 
+_render_recent_commits() {
+  local base="$1" max=5 ahead
+  ahead="$(git rev-list --count "$base"..HEAD 2>/dev/null || echo 0)"
+  [ "$ahead" -gt 0 ] || return 0
+  printf '\033[2m── recent commits ──\033[0m\n'
+  git --no-pager log --oneline --no-decorate -n "$max" "$base"..HEAD 2>/dev/null \
+    | awk '{ hash = substr($1, 1, 7); $1 = ""; msg = substr($0, 2);
+             printf "  \033[33m%s\033[0m %s\n", hash, msg }'
+  if [ "$ahead" -gt "$max" ]; then
+    printf '  \033[2m… and %d more\033[0m\n' "$((ahead - max))"
+  fi
+}
+
 _cmd_diff_pane() {
   set +e
   set +o pipefail
@@ -509,6 +522,8 @@ _cmd_diff_pane() {
       git --no-pager diff --no-renames --shortstat "$base" 2>/dev/null
       printf '\n'
       _render_branch_status "$base"
+      printf '\n'
+      _render_recent_commits "$base"
     fi
     sleep 2
   done
