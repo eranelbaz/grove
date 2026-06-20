@@ -482,6 +482,14 @@ _render_diff_tree() {
     }'
 }
 
+_render_branch_status() {
+  local base="$1" ahead behind
+  ahead="$(git rev-list --count "$base"..HEAD 2>/dev/null || echo 0)"
+  behind="$(git rev-list --count HEAD.."$base" 2>/dev/null || echo 0)"
+  printf '\033[2m── branch status ──\033[0m\n'
+  printf '  \033[32m↑ %s ahead\033[0m  \033[31m↓ %s behind\033[0m\n' "$ahead" "$behind"
+}
+
 _cmd_diff_pane() {
   set +e
   set +o pipefail
@@ -499,6 +507,8 @@ _cmd_diff_pane() {
       _render_diff_tree "$base"
       printf '\n'
       git --no-pager diff --no-renames --shortstat "$base" 2>/dev/null
+      printf '\n'
+      _render_branch_status "$base"
     fi
     sleep 2
   done
