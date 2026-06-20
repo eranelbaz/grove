@@ -185,9 +185,18 @@ cmd_attach() {
 }
 
 cmd_migrate() {
-  [ $# -ge 1 ] || die "usage: grove migrate <branch>"
+  [ $# -ge 1 ] || die "usage: grove migrate <branch> [-f]"
   require_repo
-  local branch="$1"
+  local branch="$1" force=0
+  shift
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -f|--force) force=1 ;;
+      *)          die "unknown option: $1" ;;
+    esac
+    shift
+  done
+
   local root src dst
   root="$(main_root)"; dst="$root/.worktrees/$branch"
 
@@ -196,9 +205,24 @@ cmd_migrate() {
   [ "$src" = "$dst" ] && { info "already at $dst — nothing to migrate"; return 0; }
   [ -e "$dst" ] && die "destination already exists: $dst"
 
+  if [ "$force" -eq 0 ]; then
+    local locked
+    locked="$(git worktree list --porcelain \
+              | awk -v p="worktree $src" '$0==p {found=1; next} found && /^worktree /{exit} found && /^locked/{print "y"; exit}')"
+    [ -z "$locked" ] || die "worktree at $src is locked — unlock it, or re-run with -f"
+
+    local dirty
+    dirty="$(git -C "$src" status --porcelain 2>/dev/null)"
+    [ -z "$dirty" ] || die "worktree at $src has uncommitted changes — commit/stash first, or re-run with -f"
+  fi
+
   ensure_excluded "$root"
   mkdir -p "$root/.worktrees"
-  git worktree move "$src" "$dst"
+  if [ "$force" -eq 1 ]; then
+    git worktree move --force "$src" "$dst"
+  else
+    git worktree move "$src" "$dst"
+  fi
   info "migrated $branch from $src to $dst"
 }
 

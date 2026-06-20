@@ -116,6 +116,51 @@ assert_eq "$new_path" "$mv_repo/.worktrees/feature-a" 'git now reports the new p
 # .gitignore-side exclusion is in place
 assert_contains "$(cat "$mv_repo/.git/info/exclude")" '.worktrees/' '.worktrees/ is excluded'
 
+# === cmd_migrate: dirty tree refusal & --force override ===
+printf '\n\033[1mcmd_migrate safety\033[0m\n'
+
+dirty_repo="$(new_repo migrate-dirty)"
+(
+  cd "$dirty_repo"
+  git branch feature-dirty
+  git worktree add -q "$TMP/feature-dirty-external" feature-dirty
+  echo unstaged > "$TMP/feature-dirty-external/scratch.txt"
+) >/dev/null
+
+set +e
+out_refused="$(cd "$dirty_repo" && cmd_migrate feature-dirty 2>&1)"
+rc_refused=$?
+set -e
+assert_eq "$rc_refused" '1' 'dirty source exits non-zero'
+assert_contains "$out_refused" 'uncommitted' 'mentions uncommitted changes'
+assert_eq "$(test -d "$TMP/feature-dirty-external" && echo yes || echo no)" 'yes' 'source still present after refusal'
+
+(
+  cd "$dirty_repo"
+  cmd_migrate feature-dirty -f
+) >/dev/null 2>&1
+assert_eq "$(test -d "$dirty_repo/.worktrees/feature-dirty" && echo yes || echo no)" 'yes' '--force migrates dirty tree'
+assert_eq "$(cat "$dirty_repo/.worktrees/feature-dirty/scratch.txt")" 'unstaged' 'dirty file preserved through move'
+
+# === cmd_migrate: locked worktree refusal ===
+lock_repo="$(new_repo migrate-locked)"
+(
+  cd "$lock_repo"
+  git branch feature-locked
+  git worktree add -q "$TMP/feature-locked-external" feature-locked
+  git worktree lock --reason "ci-pinned" "$TMP/feature-locked-external"
+) >/dev/null
+
+set +e
+out_locked="$(cd "$lock_repo" && cmd_migrate feature-locked 2>&1)"
+rc_locked=$?
+set -e
+assert_eq "$rc_locked" '1' 'locked source exits non-zero'
+assert_contains "$out_locked" 'locked' 'mentions the lock'
+
+# Unlock so trap-cleanup of $TMP can remove it
+git -C "$lock_repo" worktree unlock "$TMP/feature-locked-external" >/dev/null 2>&1 || true
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 if [ "$FAIL" -gt 0 ]; then
   printf '\nfailed:\n'
