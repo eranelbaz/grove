@@ -10,13 +10,35 @@ Each branch gets:
 
 ## Install
 
+Pick one of the two flavors below. Both put a `grove` executable on your `PATH`.
+
+### One-shot (download the script)
+
 ```bash
 mkdir -p ~/.local/bin
 curl -fsSL https://raw.githubusercontent.com/eranelbaz/grove/main/grove -o ~/.local/bin/grove
 chmod +x ~/.local/bin/grove
-# make sure ~/.local/bin is on PATH (e.g. add to ~/.zshrc):
-#   export PATH="$HOME/.local/bin:$PATH"
 ```
+
+### Symlink (track `main` via `git pull`)
+
+Clone the repo somewhere stable, then symlink the script into `~/.local/bin`. `git pull` in the clone keeps your `grove` up to date — no re-download.
+
+```bash
+git clone https://github.com/eranelbaz/grove.git ~/code/grove
+mkdir -p ~/.local/bin
+ln -s ~/code/grove/grove ~/.local/bin/grove
+```
+
+### Put `~/.local/bin` on your `PATH`
+
+Either install method needs `~/.local/bin` on your shell's `PATH`. If it isn't already, add this to `~/.zshrc` (or `~/.bashrc`):
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Then reload: `source ~/.zshrc` (or open a fresh terminal). Verify with `which grove` and `grove help`.
 
 Requires `bash` 3.2+, `git` 2.5+, and `tmux`.
 
