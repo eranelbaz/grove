@@ -161,6 +161,25 @@ assert_contains "$out_locked" 'locked' 'mentions the lock'
 # Unlock so trap-cleanup of $TMP can remove it
 git -C "$lock_repo" worktree unlock "$TMP/feature-locked-external" >/dev/null 2>&1 || true
 
+# === cmd_migrate --adopt: register without moving ===
+printf '\n\033[1mcmd_migrate --adopt\033[0m\n'
+
+adopt_repo="$(new_repo migrate-adopt)"
+(
+  cd "$adopt_repo"
+  git branch feature-adopt
+  git worktree add -q "$TMP/feature-adopt-external" feature-adopt
+) >/dev/null
+
+(
+  cd "$adopt_repo"
+  cmd_migrate feature-adopt --adopt
+) > "$TMP/adopt.out" 2>&1
+
+assert_eq "$(test -d "$TMP/feature-adopt-external" && echo yes || echo no)" 'yes' 'adopt leaves source path in place'
+assert_eq "$(test -d "$adopt_repo/.worktrees/feature-adopt" && echo yes || echo no)" 'no' 'adopt does not create canonical path'
+assert_contains "$(cat "$TMP/adopt.out")" 'adopted' 'adopt announces itself'
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 if [ "$FAIL" -gt 0 ]; then
   printf '\nfailed:\n'

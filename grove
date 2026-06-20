@@ -185,13 +185,14 @@ cmd_attach() {
 }
 
 cmd_migrate() {
-  [ $# -ge 1 ] || die "usage: grove migrate <branch> [-f]"
+  [ $# -ge 1 ] || die "usage: grove migrate <branch> [-f|--adopt]"
   require_repo
-  local branch="$1" force=0
+  local branch="$1" force=0 adopt=0
   shift
   while [ $# -gt 0 ]; do
     case "$1" in
       -f|--force) force=1 ;;
+      --adopt)    adopt=1 ;;
       *)          die "unknown option: $1" ;;
     esac
     shift
@@ -202,6 +203,12 @@ cmd_migrate() {
 
   src="$(_worktree_path_for "$branch")"
   [ -n "$src" ] || die "no worktree for branch '$branch' — use: grove attach $branch"
+
+  if [ "$adopt" -eq 1 ]; then
+    info "adopted $branch at $src"
+    return 0
+  fi
+
   [ "$src" = "$dst" ] && { info "already at $dst — nothing to migrate"; return 0; }
   [ -e "$dst" ] && die "destination already exists: $dst"
 
