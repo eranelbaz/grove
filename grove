@@ -184,8 +184,22 @@ cmd_attach() {
   _start_session "$branch" "$wt" "$base"
 }
 
+_restart_session_at() {
+  local branch="$1" wt="$2" session base existing_wt
+  command -v tmux >/dev/null 2>&1 || return 0
+  session="$(_session_for "$branch")"
+  if tmux has-session -t "$session" 2>/dev/null; then
+    existing_wt="$(tmux show-options -t "$session" -v @grove-worktree 2>/dev/null || true)"
+    if [ -n "$existing_wt" ] && [ "$existing_wt" != "$wt" ]; then
+      tmux kill-session -t "$session" 2>/dev/null && info "killed stale session $session ($existing_wt)" || true
+    fi
+  fi
+  base="$(_default_base)"
+  _start_session "$branch" "$wt" "$base"
+}
+
 cmd_migrate() {
-  [ $# -ge 1 ] || die "usage: grove migrate <branch> [-f|--adopt]  |  grove migrate --all [-f]"
+  [ $# -ge 1 ] || die "usage: grove migrate <branch> [-f|--adopt|--no-session]  |  grove migrate --all [-f]"
   require_repo
   local root; root="$(main_root)"
 
@@ -208,20 +222,21 @@ cmd_migrate() {
       esac
       branch="$(git -C "$path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
       [ -z "$branch" ] || [ "$branch" = "HEAD" ] && continue
-      if ! ( cmd_migrate "$branch" $force_flag ); then
+      if ! ( cmd_migrate "$branch" $force_flag --no-session ); then
         any_fail=1
       fi
     done < <(git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}')
     return "$any_fail"
   fi
 
-  local branch="$1" force=0 adopt=0
+  local branch="$1" force=0 adopt=0 no_session=0
   shift
   while [ $# -gt 0 ]; do
     case "$1" in
-      -f|--force) force=1 ;;
-      --adopt)    adopt=1 ;;
-      *)          die "unknown option: $1" ;;
+      -f|--force)   force=1 ;;
+      --adopt)      adopt=1 ;;
+      --no-session) no_session=1 ;;
+      *)            die "unknown option: $1" ;;
     esac
     shift
   done
@@ -234,6 +249,7 @@ cmd_migrate() {
 
   if [ "$adopt" -eq 1 ]; then
     info "adopted $branch at $src"
+    [ "$no_session" -eq 1 ] || _restart_session_at "$branch" "$src"
     return 0
   fi
 
@@ -259,6 +275,7 @@ cmd_migrate() {
     git worktree move "$src" "$dst"
   fi
   info "migrated $branch from $src to $dst"
+  [ "$no_session" -eq 1 ] || _restart_session_at "$branch" "$dst"
 }
 
 cmd_list() {

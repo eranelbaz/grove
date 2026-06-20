@@ -103,7 +103,7 @@ mv_repo="$(new_repo migrate-happy)"
 
 (
   cd "$mv_repo"
-  cmd_migrate feature-a
+  cmd_migrate feature-a --no-session
 ) > "$TMP/migrate-happy.out" 2>&1
 
 assert_eq "$(test -d "$mv_repo/.worktrees/feature-a" && echo yes || echo no)" 'yes' 'worktree exists at canonical path'
@@ -128,7 +128,7 @@ dirty_repo="$(new_repo migrate-dirty)"
 ) >/dev/null
 
 set +e
-out_refused="$(cd "$dirty_repo" && cmd_migrate feature-dirty 2>&1)"
+out_refused="$(cd "$dirty_repo" && cmd_migrate feature-dirty --no-session 2>&1)"
 rc_refused=$?
 set -e
 assert_eq "$rc_refused" '1' 'dirty source exits non-zero'
@@ -137,7 +137,7 @@ assert_eq "$(test -d "$TMP/feature-dirty-external" && echo yes || echo no)" 'yes
 
 (
   cd "$dirty_repo"
-  cmd_migrate feature-dirty -f
+  cmd_migrate feature-dirty -f --no-session
 ) >/dev/null 2>&1
 assert_eq "$(test -d "$dirty_repo/.worktrees/feature-dirty" && echo yes || echo no)" 'yes' '--force migrates dirty tree'
 assert_eq "$(cat "$dirty_repo/.worktrees/feature-dirty/scratch.txt")" 'unstaged' 'dirty file preserved through move'
@@ -152,7 +152,7 @@ lock_repo="$(new_repo migrate-locked)"
 ) >/dev/null
 
 set +e
-out_locked="$(cd "$lock_repo" && cmd_migrate feature-locked 2>&1)"
+out_locked="$(cd "$lock_repo" && cmd_migrate feature-locked --no-session 2>&1)"
 rc_locked=$?
 set -e
 assert_eq "$rc_locked" '1' 'locked source exits non-zero'
@@ -173,7 +173,7 @@ adopt_repo="$(new_repo migrate-adopt)"
 
 (
   cd "$adopt_repo"
-  cmd_migrate feature-adopt --adopt
+  cmd_migrate feature-adopt --adopt --no-session
 ) > "$TMP/adopt.out" 2>&1
 
 assert_eq "$(test -d "$TMP/feature-adopt-external" && echo yes || echo no)" 'yes' 'adopt leaves source path in place'
