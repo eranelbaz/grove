@@ -69,10 +69,12 @@ _render_diff_tree() {
 }
 
 _render_branch_status() {
-  local base="$1" ahead behind
+  local base="$1" ahead behind branch
   ahead="$(git rev-list --count "$base"..HEAD 2>/dev/null || echo 0)"
   behind="$(git rev-list --count HEAD.."$base" 2>/dev/null || echo 0)"
-  printf '%s── branch status ──%s\n' "$C_DIM" "$C_RESET"
+  branch="$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
+  printf '%s── branch status ── %s%s%s%s ──%s\n' \
+    "$C_DIM" "$C_RESET" "$C_YELLOW" "$branch" "$C_DIM" "$C_RESET"
   printf '  %s↑ %s ahead%s  %s↓ %s behind%s\n' \
     "$C_GREEN" "$ahead" "$C_RESET" "$C_RED" "$behind" "$C_RESET"
 }
