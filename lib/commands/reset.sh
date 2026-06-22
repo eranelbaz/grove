@@ -23,6 +23,10 @@ cmd_reset() {
     tmux kill-pane -t "$pane_id" 2>/dev/null && killed=$((killed + 1)) || true
   done < <(tmux list-panes -s -t "$session" -F '#{pane_id} #{@grove-pane}')
   [ "$killed" -gt 0 ] && info "killed $killed grove pane(s)"
-  _spawn_grove_panes "$session" "$wt"
+  local window_id
+  while read -r window_id; do
+    _spawn_grove_panes "$session:$window_id" "$wt"
+  done < <(tmux list-windows -t "$session" -F '#{window_id}')
+  _install_window_hook "$session"
   info "grove panes respawned in $session"
 }

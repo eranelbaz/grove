@@ -22,18 +22,23 @@ _start_session() {
   repo="$(basename "$(main_root)")"
   if tmux has-session -t "$session" 2>/dev/null; then
     _tag_session "$session" "$repo" "$branch" "$wt" "$base"
+    _install_window_hook "$session"
     info "attaching existing session: $session"; attach "$session"; return
   fi
   info "starting session: $session"
   tmux new-session -d -s "$session" -c "$wt"
   _tag_session "$session" "$repo" "$branch" "$wt" "$base"
   _spawn_grove_panes "$session" "$wt"
+  _install_window_hook "$session"
   attach "$session"
 }
 
+# Target may be a session, session:window_id, or pane_id — anything tmux's -t
+# flag accepts. Splits the active pane of that target and pins our 3 panes
+# on the right.
 _spawn_grove_panes() {
-  local session="$1" wt="$2" tree_pane status_pane commits_pane
-  tree_pane="$(tmux split-window -h -p "$DIFF_PANE_WIDTH_PCT" -t "$session" -c "$wt" -P -F '#{pane_id}' \
+  local target="$1" wt="$2" tree_pane status_pane commits_pane
+  tree_pane="$(tmux split-window -h -p "$DIFF_PANE_WIDTH_PCT" -t "$target" -c "$wt" -P -F '#{pane_id}' \
                 "exec $GROVE_BIN _pane diff" 2>/dev/null || true)"
   if [ -z "$tree_pane" ]; then
     info "grove panes skipped (split failed — terminal may be too narrow)"
@@ -46,7 +51,24 @@ _spawn_grove_panes() {
   status_pane="$(tmux split-window -v -l "$STATUS_PANE_LINES" -t "$tree_pane" -c "$wt" -P -F '#{pane_id}' \
                    "exec $GROVE_BIN _pane status" 2>/dev/null || true)"
   [ -n "$status_pane" ] && tmux set-option -p -t "$status_pane" -q @grove-pane status
-  tmux select-pane -t "$session" -L 2>/dev/null || true
+  tmux select-pane -t "$target" -L 2>/dev/null || true
+}
+
+# Re-fires whenever a window is added to a grove session so the right-side
+# panes appear in every window, not just the first one.
+_install_window_hook() {
+  local session="$1"
+  tmux set-hook -t "$session" after-new-window \
+    "run-shell -b \"$GROVE_BIN _pin '#{session_name}:#{window_id}'\""
+}
+
+_cmd_pin() {
+  local target="${1:-}"
+  [ -n "$target" ] || die "_pin requires a target"
+  local session="${target%%:*}" wt
+  wt="$(tmux show-options -t "$session" -v @grove-worktree 2>/dev/null || true)"
+  [ -n "$wt" ] || return 0
+  _spawn_grove_panes "$target" "$wt"
 }
 
 _restart_session_at() {

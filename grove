@@ -89,6 +89,7 @@ main() {
     init)           shift; cmd_init "$@" ;;
     migrate|mv)     shift; cmd_migrate "$@" ;;
     _pane)          shift; _cmd_pane "$@" ;;
+    _pin)           shift; _cmd_pin "$@" ;;
     help|-h|--help) usage ;;
     *)              die "unknown command '$cmd' — try: grove help" ;;
   esac
