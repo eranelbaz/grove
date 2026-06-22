@@ -28,10 +28,10 @@ _collate_diff_streams() {
 }
 
 _render_diff_tree() {
-  local base="$1" merged
-  merged="$(_collate_diff_streams "$base")"
+  local anchor="$1" label="$2" merged
+  merged="$(_collate_diff_streams "$anchor")"
   if [ -z "$merged" ]; then
-    printf '%s(clean — no changes vs %s)%s\n' "$C_DIM" "$base" "$C_RESET"
+    printf '%s(clean — no changes vs %s)%s\n' "$C_DIM" "$label" "$C_RESET"
     return
   fi
   printf '%s\n' "$merged" | awk -F'\t' '
@@ -69,9 +69,10 @@ _render_diff_tree() {
 }
 
 _render_branch_status() {
-  local base="$1" ahead behind branch
-  ahead="$(git rev-list --count "$base"..HEAD 2>/dev/null || echo 0)"
-  behind="$(git rev-list --count HEAD.."$base" 2>/dev/null || echo 0)"
+  local base="$1" ref ahead behind branch
+  ref="$(_resolve_base "$base")"
+  ahead="$(git rev-list --count "$ref"..HEAD 2>/dev/null || echo 0)"
+  behind="$(git rev-list --count HEAD.."$ref" 2>/dev/null || echo 0)"
   branch="$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
   printf '%s── branch status ── %s%s%s%s ──%s\n' \
     "$C_DIM" "$C_RESET" "$C_YELLOW" "$branch" "$C_DIM" "$C_RESET"
@@ -80,11 +81,12 @@ _render_branch_status() {
 }
 
 _render_recent_commits() {
-  local base="$1" ahead
-  ahead="$(git rev-list --count "$base"..HEAD 2>/dev/null || echo 0)"
+  local base="$1" ref ahead
+  ref="$(_resolve_base "$base")"
+  ahead="$(git rev-list --count "$ref"..HEAD 2>/dev/null || echo 0)"
   [ "$ahead" -gt 0 ] || return 0
   printf '%s── recent commits ──%s\n' "$C_DIM" "$C_RESET"
-  git --no-pager log --oneline --no-decorate -n "$COMMITS_PANE_MAX" "$base"..HEAD 2>/dev/null \
+  git --no-pager log --oneline --no-decorate -n "$COMMITS_PANE_MAX" "$ref"..HEAD 2>/dev/null \
     | awk -v c="$C_YELLOW" -v r="$C_RESET" '
         { hash = substr($1, 1, 7); $1 = ""; msg = substr($0, 2);
           printf "  %s%s%s %s\n", c, hash, r, msg }'
@@ -97,18 +99,46 @@ _is_valid_base() {
   [ -n "$1" ] && git rev-parse --verify --quiet "$1" >/dev/null 2>&1
 }
 
-_diff_pane_render() {
+# Prefer origin/<base> when the remote-tracking branch exists, so a stale
+# local main doesn't hide commits that have landed upstream. Refs that
+# already contain a slash (e.g. origin/main, upstream/dev) are used as-is.
+_resolve_base() {
   local base="$1"
+  [ -n "$base" ] || return 0
+  case "$base" in
+    */*) printf '%s' "$base"; return 0 ;;
+  esac
+  if git show-ref --verify --quiet "refs/remotes/origin/$base"; then
+    printf 'origin/%s' "$base"
+  else
+    printf '%s' "$base"
+  fi
+}
+
+_diff_pane_render() {
+  local base="$1" ref
   if [ -z "$base" ]; then
     printf 'no base set\n\nrun: grove base <branch>\n'
-  elif ! _is_valid_base "$base"; then
-    printf '%sinvalid base: %s%s\n\nrun: grove base <branch>\n' "$C_RED" "$base" "$C_RESET"
-  else
-    printf '%s── diff vs %s ── %s ──%s\n\n' "$C_DIM" "$base" "$(date +%H:%M:%S)" "$C_RESET"
-    _render_diff_tree "$base"
-    printf '\n'
-    git --no-pager diff --no-renames --shortstat "$base" 2>/dev/null
+    return
   fi
+  ref="$(_resolve_base "$base")"
+  if ! _is_valid_base "$ref"; then
+    printf '%sinvalid base: %s%s\n\nrun: grove base <branch>\n' "$C_RED" "$base" "$C_RESET"
+    return
+  fi
+  local anchor ahead behind counts=""
+  anchor="$(git merge-base "$ref" HEAD 2>/dev/null)"
+  [ -n "$anchor" ] || anchor="$ref"
+  ahead="$(git rev-list --count "$ref"..HEAD 2>/dev/null || echo 0)"
+  behind="$(git rev-list --count HEAD.."$ref" 2>/dev/null || echo 0)"
+  [ "$ahead"  -gt 0 ] && counts="${counts} ${C_GREEN}↑ ${ahead} ahead${C_DIM}"
+  [ "$behind" -gt 0 ] && counts="${counts} ${C_RED}↓ ${behind} behind${C_DIM}"
+  [ -n "$counts" ] && counts="${counts# } ── "
+  printf '%s── diff vs %s ── %b%s ──%s\n\n' \
+    "$C_DIM" "$base" "$counts" "$(date +%H:%M:%S)" "$C_RESET"
+  _render_diff_tree "$anchor" "$base"
+  printf '\n'
+  git --no-pager diff --no-renames --shortstat "$anchor" 2>/dev/null
 }
 
 _status_pane_render()  { _is_valid_base "$1" && _render_branch_status  "$1"; }
