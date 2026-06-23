@@ -32,6 +32,21 @@ require_tmux() { command -v tmux >/dev/null 2>&1 || die "tmux is not installed";
 
 main_root() { git worktree list --porcelain | awk '/^worktree /{print $2; exit}'; }
 
+# Detached tmux sessions get a default 80x24, which makes split-window resolve
+# percentages and fixed line-counts against the wrong dimensions — the panes
+# stay at those sizes after the client attaches. Pass the real client size to
+# `new-session -x/-y` so the splits land correctly the first time.
+_client_size() {
+  local c="" r=""
+  if [ -n "${TMUX:-}" ]; then
+    c="$(tmux display-message -p '#{client_width}' 2>/dev/null || true)"
+    r="$(tmux display-message -p '#{client_height}' 2>/dev/null || true)"
+  fi
+  case "$c" in ''|0) c="$(tput cols 2>/dev/null || echo 200)" ;; esac
+  case "$r" in ''|0) r="$(tput lines 2>/dev/null || echo 50)" ;; esac
+  printf '%s %s\n' "$c" "$r"
+}
+
 sanitize() { printf '%s' "$1" | tr './: ' '----'; }
 session_name() { printf '%s-%s' "$(sanitize "$1")" "$(sanitize "$2")"; }
 _session_for() { session_name "$(basename "$(main_root)")" "$1"; }

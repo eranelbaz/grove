@@ -26,7 +26,9 @@ _start_session() {
     info "attaching existing session: $session"; attach "$session"; return
   fi
   info "starting session: $session"
-  tmux new-session -d -s "$session" -c "$wt"
+  local cols rows
+  read -r cols rows <<<"$(_client_size)"
+  tmux new-session -d -s "$session" -c "$wt" -x "$cols" -y "$rows"
   _tag_session "$session" "$repo" "$branch" "$wt" "$base"
   _install_window_hook "$session"
   _spawn_grove_panes "$session" "$wt"
