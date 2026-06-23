@@ -96,7 +96,7 @@ _render_recent_commits() {
 }
 
 _render_pr_status() {
-  local branch line state number is_draft title color label
+  local branch line state number is_draft url title color label
   branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
   printf '%s── pull request ──%s\n' "$C_DIM" "$C_RESET"
   if ! command -v gh >/dev/null 2>&1; then
@@ -107,13 +107,13 @@ _render_pr_status() {
     printf '  %s(detached head)%s\n' "$C_DIM" "$C_RESET"
     return
   fi
-  line="$(gh pr view "$branch" --json state,number,isDraft,title \
-            --template '{{.state}}|{{.number}}|{{.isDraft}}|{{.title}}' 2>/dev/null)" || true
+  line="$(gh pr view "$branch" --json state,number,isDraft,url,title \
+            --template '{{.state}}|{{.number}}|{{.isDraft}}|{{.url}}|{{.title}}' 2>/dev/null)" || true
   if [ -z "$line" ]; then
     printf '  %s(no PR for %s)%s\n' "$C_DIM" "$branch" "$C_RESET"
     return
   fi
-  IFS='|' read -r state number is_draft title <<< "$line"
+  IFS='|' read -r state number is_draft url title <<< "$line"
   if [ "$state" = "OPEN" ] && [ "$is_draft" = "true" ]; then
     color="$C_DIM"; label="draft"
   else
@@ -124,8 +124,8 @@ _render_pr_status() {
       *)      color="$C_DIM";   label="$state" ;;
     esac
   fi
-  printf '  %s#%s %s%s  %s%s%s\n' \
-    "$color" "$number" "$label" "$C_RESET" "$C_DIM" "$title" "$C_RESET"
+  printf '  %s\033]8;;%s\033\\#%s\033]8;;\033\\ %s%s  %s%s%s\n' \
+    "$color" "$url" "$number" "$label" "$C_RESET" "$C_DIM" "$title" "$C_RESET"
 }
 
 _is_valid_base() {
