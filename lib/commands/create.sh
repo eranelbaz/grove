@@ -17,7 +17,6 @@ cmd_create() {
     ensure_excluded "$root"
     info "new branch '$branch' from '$base'"
     git worktree add -b "$branch" "$wt" "$base"
-    _run_hook setup.sh "$branch" "$wt" "$from"
   fi
-  _start_session "$branch" "$wt" "$base"
+  _start_session "$branch" "$wt" "$base" "$GROVE_BIN _setup '$branch' '$wt' '$from'"
 }

@@ -17,7 +17,7 @@ _tag_session() {
 }
 
 _start_session() {
-  local branch="$1" wt="$2" base="${3:-}" session repo
+  local branch="$1" wt="$2" base="${3:-}" setup_cmd="${4:-}" session repo
   session="$(_session_for "$branch")"
   repo="$(basename "$(main_root)")"
   if tmux has-session -t "$session" 2>/dev/null; then
@@ -28,9 +28,19 @@ _start_session() {
   info "starting session: $session"
   tmux new-session -d -s "$session" -c "$wt"
   _tag_session "$session" "$repo" "$branch" "$wt" "$base"
-  _spawn_grove_panes "$session" "$wt"
   _install_window_hook "$session"
+  if [ -n "$setup_cmd" ]; then
+    tmux send-keys -t "$session" "$setup_cmd" Enter
+  else
+    _spawn_grove_panes "$session" "$wt"
+  fi
   attach "$session"
+}
+
+_cmd_setup() {
+  local branch="$1" wt="$2" from="${3:-}"
+  _run_hook setup.sh "$branch" "$wt" "$from"
+  cmd_reset
 }
 
 # Target may be a session, session:window_id, or pane_id — anything tmux's -t

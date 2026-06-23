@@ -4,7 +4,9 @@
 cmd_attach() {
   [ $# -ge 1 ] || die "usage: grove attach <branch>"
   require_repo
-  local branch="$1"
+  local branch
+  branch="$(resolve_branch "$1")" \
+    || die "no branch matching '$1' — use: grove create $1 [from-branch]"
   local root wt session base existing_path
   root="$(main_root)"; wt="$root/.worktrees/$branch"
 
@@ -20,9 +22,6 @@ cmd_attach() {
   if tmux has-session -t "$session" 2>/dev/null; then
     info "attaching existing session: $session"; attach "$session"; return
   fi
-  git show-ref --verify --quiet "refs/heads/$branch" \
-    || die "no branch '$branch' — use: grove create $branch [from-branch]"
-
   if [ ! -d "$wt" ]; then
     ensure_excluded "$root"
     info "worktree for existing branch '$branch'"

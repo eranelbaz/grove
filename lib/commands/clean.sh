@@ -5,11 +5,10 @@ cmd_clean() {
   [ $# -ge 1 ] || die "usage: grove clean <branch> [-f]"
   require_repo
 
-  local branch="$1" force=""
+  local branch force=""
+  branch="$(resolve_branch "$1")" \
+    || die "no branch matching '$1' — run 'grove list' to see available branches"
   case "${2:-}" in -f|--force) force="--force" ;; esac
-
-  git show-ref --verify --quiet "refs/heads/$branch" \
-    || die "no branch '$branch' — run 'grove list' to see available branches"
 
   local root wt session
   root="$(main_root)"

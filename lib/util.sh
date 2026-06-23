@@ -63,6 +63,26 @@ ensure_excluded() {
   fi
 }
 
+resolve_branch() {
+  local input="$1"
+  if git show-ref --verify --quiet "refs/heads/$input"; then
+    printf '%s' "$input"; return
+  fi
+  local matches
+  matches=$(git for-each-ref --format='%(refname:short)' 'refs/heads/' \
+    | grep "^$input" || true)
+  local count
+  count=$(printf '%s' "$matches" | grep -c . || true)
+  if [ "$count" -eq 1 ]; then
+    printf '%s' "$matches"; return
+  elif [ "$count" -gt 1 ]; then
+    printf "grove: ambiguous prefix '%s' matches:\n" "$input" >&2
+    printf '%s\n' "$matches" | sed 's/^/  /' >&2
+    exit 1
+  fi
+  printf '' ; return 1
+}
+
 _run_hook() {
   local hook_name="$1" branch="$2" wt="$3" from="${4:-}"
   local root repo hook
