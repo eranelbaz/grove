@@ -95,6 +95,39 @@ _render_recent_commits() {
   fi
 }
 
+_render_pr_status() {
+  local branch line state number is_draft title color label
+  branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+  printf '%s── pull request ──%s\n' "$C_DIM" "$C_RESET"
+  if ! command -v gh >/dev/null 2>&1; then
+    printf '  %s(gh not installed)%s\n' "$C_DIM" "$C_RESET"
+    return
+  fi
+  if [ -z "$branch" ]; then
+    printf '  %s(detached head)%s\n' "$C_DIM" "$C_RESET"
+    return
+  fi
+  line="$(gh pr view "$branch" --json state,number,isDraft,title \
+            --template '{{.state}}|{{.number}}|{{.isDraft}}|{{.title}}' 2>/dev/null)" || true
+  if [ -z "$line" ]; then
+    printf '  %s(no PR for %s)%s\n' "$C_DIM" "$branch" "$C_RESET"
+    return
+  fi
+  IFS='|' read -r state number is_draft title <<< "$line"
+  if [ "$state" = "OPEN" ] && [ "$is_draft" = "true" ]; then
+    color="$C_DIM"; label="draft"
+  else
+    case "$state" in
+      OPEN)   color="$C_GREEN"; label="open" ;;
+      MERGED) color="$C_BLUE";  label="merged" ;;
+      CLOSED) color="$C_RED";   label="closed" ;;
+      *)      color="$C_DIM";   label="$state" ;;
+    esac
+  fi
+  printf '  %s#%s %s%s  %s%s%s\n' \
+    "$color" "$number" "$label" "$C_RESET" "$C_DIM" "$title" "$C_RESET"
+}
+
 _is_valid_base() {
   [ -n "$1" ] && git rev-parse --verify --quiet "$1" >/dev/null 2>&1
 }
@@ -142,6 +175,7 @@ _diff_pane_render() {
 }
 
 _status_pane_render()  { _is_valid_base "$1" && _render_branch_status  "$1"; }
+_pr_pane_render()      { _render_pr_status; }
 _commits_pane_render() { _is_valid_base "$1" && _render_recent_commits "$1"; }
 
 _pane_loop() {
@@ -169,6 +203,7 @@ _cmd_pane() {
   case "${1:-}" in
     diff)    _pane_loop "$DIFF_PANE_INTERVAL"    _diff_pane_render ;;
     status)  _pane_loop "$STATUS_PANE_INTERVAL"  _status_pane_render ;;
+    pr)      _pane_loop "$PR_PANE_INTERVAL"      _pr_pane_render ;;
     commits) _pane_loop "$COMMITS_PANE_INTERVAL" _commits_pane_render ;;
     *)       die "unknown pane: ${1:-<empty>}" ;;
   esac

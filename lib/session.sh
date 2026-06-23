@@ -37,7 +37,7 @@ _start_session() {
 # flag accepts. Splits the active pane of that target and pins our 3 panes
 # on the right.
 _spawn_grove_panes() {
-  local target="$1" wt="$2" tree_pane status_pane commits_pane
+  local target="$1" wt="$2" tree_pane status_pane pr_pane commits_pane
   tree_pane="$(tmux split-window -h -p "$DIFF_PANE_WIDTH_PCT" -t "$target" -c "$wt" -P -F '#{pane_id}' \
                 "exec $GROVE_BIN _pane diff" 2>/dev/null || true)"
   if [ -z "$tree_pane" ]; then
@@ -48,6 +48,9 @@ _spawn_grove_panes() {
   commits_pane="$(tmux split-window -v -l "$COMMITS_PANE_LINES" -t "$tree_pane" -c "$wt" -P -F '#{pane_id}' \
                     "exec $GROVE_BIN _pane commits" 2>/dev/null || true)"
   [ -n "$commits_pane" ] && tmux set-option -p -t "$commits_pane" -q @grove-pane commits
+  pr_pane="$(tmux split-window -v -l "$PR_PANE_LINES" -t "$tree_pane" -c "$wt" -P -F '#{pane_id}' \
+               "exec $GROVE_BIN _pane pr" 2>/dev/null || true)"
+  [ -n "$pr_pane" ] && tmux set-option -p -t "$pr_pane" -q @grove-pane pr
   status_pane="$(tmux split-window -v -l "$STATUS_PANE_LINES" -t "$tree_pane" -c "$wt" -P -F '#{pane_id}' \
                    "exec $GROVE_BIN _pane status" 2>/dev/null || true)"
   [ -n "$status_pane" ] && tmux set-option -p -t "$status_pane" -q @grove-pane status
