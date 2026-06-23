@@ -2,21 +2,41 @@
 # grove clean — teardown, kill session, remove worktree, optionally delete branch.
 
 cmd_clean() {
-  [ $# -ge 1 ] || die "usage: grove clean <branch> [-f]"
   require_repo
 
-  local branch force=""
-  branch="$(resolve_branch "$1")" \
-    || die "no branch matching '$1' — run 'grove list' to see available branches"
-  case "${2:-}" in -f|--force) force="--force" ;; esac
+  local force="" branches=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -f|--force) force="--force" ;;
+      *)          branches+=("$1") ;;
+    esac
+    shift
+  done
+  [ "${#branches[@]}" -ge 1 ] || die "usage: grove clean <branch>... [-f]"
+
+  local arg
+  for arg in "${branches[@]}"; do
+    _clean_one "$arg" "$force" || true
+  done
+}
+
+_clean_one() {
+  local input="$1" force="$2"
+  local branch
+  branch="$(resolve_branch "$input")" || {
+    printf 'grove: no branch matching %q — skipping\n' "$input" >&2
+    return 1
+  }
 
   local root wt session
   root="$(main_root)"
   wt="$root/.worktrees/$branch"
   session="$(_session_for "$branch")"
 
-  [ -d "$wt" ] \
-    || die "branch '$branch' is not tracked by grove — run 'grove list' to see tracked branches"
+  if [ ! -d "$wt" ]; then
+    printf 'grove: branch %q is not tracked by grove — skipping\n' "$branch" >&2
+    return 1
+  fi
 
   _run_hook teardown.sh "$branch" "$wt" ""
   tmux kill-session -t "$session" 2>/dev/null && info "killed session $session" || true

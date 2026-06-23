@@ -43,12 +43,13 @@ grove attach <branch>                 Worktree + session for an existing branch
 grove list                            In a repo: its worktrees + which are live.
                                       Outside any repo: a tree of every running
                                       grove session grouped by repo.
-grove clean <branch> [-f]             Run teardown hook → kill session → remove
-                                      worktree → offer to delete the branch.
+grove clean <branch>... [-f]          Run teardown hook → kill session → remove
+                                      worktree → offer to delete the branch. Accepts
+                                      multiple branches.
 grove base [<branch>]                 Show or set the diff-pane base for the
                                       current session.
-grove reset [<branch>]                Kill and respawn the right-side diff pane.
-                                      With a branch arg: target that session.
+grove reset [<branch>...]             Kill and respawn the right-side diff pane.
+                                      With branch args: target each of those sessions.
                                       Custom panes you added are left alone.
 grove init                            Scaffold setup.sh / teardown.sh hooks for
                                       the current repo.

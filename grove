@@ -15,13 +15,14 @@
 #   grove list                           In a repo: list its worktrees + session state.
 #                                        Outside any repo: a tree of every running
 #                                        grove session grouped by repo.
-#   grove clean <branch> [-f]            Run teardown, kill session, remove worktree,
-#                                        offer to delete the branch.
+#   grove clean <branch>... [-f]         Run teardown, kill session, remove worktree,
+#                                        offer to delete the branch. Accepts multiple
+#                                        branches — failures on one don't stop the rest.
 #   grove base [<branch>]                Show or set the base branch for the current
 #                                        session — drives the right-side diff pane.
-#   grove reset [<branch>]               Kill the right-side diff pane and respawn it.
-#                                        With no arg: current session. With a branch:
-#                                        the session for that worktree. Custom panes
+#   grove reset [<branch>...]            Kill the right-side diff pane and respawn it.
+#                                        With no arg: current session. With branches:
+#                                        the session for each worktree. Custom panes
 #                                        you added are left alone.
 #   grove init                           Scaffold setup.sh + teardown.sh hooks for this repo.
 #   grove migrate <branch> [-f]          Move <branch>'s existing worktree into
