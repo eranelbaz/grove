@@ -39,7 +39,7 @@
 # Per-repo hooks (replace your old setup script):
 #   $GROVE_HOME/<repo-name>/setup.sh      runs on create/attach, inside the new worktree
 #   $GROVE_HOME/<repo-name>/teardown.sh   runs on clean, inside the worktree before removal
-#   (default GROVE_HOME=~/.grove)
+#   (default GROVE_HOME=${XDG_CONFIG_HOME:-~/.config}/grove)
 #   Both run with CWD = the worktree and these vars:
 #     GROVE_WORKTREE  GROVE_BRANCH  GROVE_FROM  GROVE_REPO_ROOT  GROVE_REPO_NAME
 #
@@ -59,7 +59,7 @@ _grove_resolve_self() {
 
 GROVE_BIN="$(_grove_resolve_self)"
 GROVE_LIB="$(dirname "$GROVE_BIN")/lib"
-GROVE_HOME="${GROVE_HOME:-$HOME/.grove}"
+GROVE_HOME="${GROVE_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/grove}"
 
 # shellcheck source=lib/util.sh
 source "$GROVE_LIB/util.sh"

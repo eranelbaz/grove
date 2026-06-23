@@ -61,7 +61,7 @@ grove help
 
 ## Per-repo hooks
 
-`grove init` scaffolds two scripts at `~/.grove/<repo-name>/`:
+`grove init` scaffolds two scripts at `${XDG_CONFIG_HOME:-~/.config}/grove/<repo-name>/` (override with `GROVE_HOME`):
 
 - `setup.sh` — runs once after `grove create` (or first `grove attach`), inside the new worktree. Use it to copy gitignored files, install deps, pick a unique dev port, etc.
 - `teardown.sh` — runs during `grove clean`, before the session is killed and the worktree is removed. Use it to stop containers, drop scratch databases, free ports.
