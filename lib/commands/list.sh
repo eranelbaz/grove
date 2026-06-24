@@ -15,8 +15,8 @@ _load_pr_cache() {
   command -v gh >/dev/null 2>&1 || return 0
   _grove_pr_cache="$(cd "$path" 2>/dev/null && \
     gh pr list --state all --limit 200 \
-      --json state,number,headRefName,isDraft \
-      --template '{{range .}}{{.headRefName}}|{{.state}}|{{.number}}|{{.isDraft}}{{"\n"}}{{end}}' \
+      --json state,number,headRefName,isDraft,url \
+      --template '{{range .}}{{.headRefName}}|{{.state}}|{{.number}}|{{.isDraft}}|{{.url}}{{"\n"}}{{end}}' \
       2>/dev/null)" || _grove_pr_cache=""
 }
 
@@ -82,12 +82,12 @@ _ports_format() {
 }
 
 _pr_format() {
-  local line="$1" state number is_draft color label plain pad
+  local line="$1" state number is_draft url color label plain pad
   if [ -z "$line" ]; then
     printf '%-13s' ""
     return
   fi
-  IFS='|' read -r _ state number is_draft <<< "$line"
+  IFS='|' read -r _ state number is_draft url <<< "$line"
   if [ "$state" = "OPEN" ] && [ "$is_draft" = "true" ]; then
     color="$C_DIM"; label="draft"
   else
@@ -101,7 +101,8 @@ _pr_format() {
   plain="#${number} ${label}"
   pad=$(( 13 - ${#plain} ))
   [ "$pad" -lt 1 ] && pad=1
-  printf '%s%s%s%*s' "$color" "$plain" "$C_RESET" "$pad" ""
+  printf '%s\033]8;;%s\033\\#%s\033]8;;\033\\ %s%s%*s' \
+    "$color" "$url" "$number" "$label" "$C_RESET" "$pad" ""
 }
 
 cmd_list() {
