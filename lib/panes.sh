@@ -80,16 +80,34 @@ _render_branch_status() {
     "$C_GREEN" "$ahead" "$C_RESET" "$C_RED" "$behind" "$C_RESET"
 }
 
+_repo_web_url() {
+  local url
+  url="$(git remote get-url origin 2>/dev/null)" || return 1
+  [ -n "$url" ] || return 1
+  url="${url%.git}"
+  case "$url" in
+    git@*:*)            url="${url#git@}"; printf 'https://%s' "${url/:/\/}" ;;
+    ssh://git@*)        printf 'https://%s' "${url#ssh://git@}" ;;
+    https://*|http://*) printf '%s' "$url" ;;
+    *)                  return 1 ;;
+  esac
+}
+
 _render_recent_commits() {
-  local base="$1" ref ahead
+  local base="$1" ref ahead repo_url
   ref="$(_resolve_base "$base")"
   ahead="$(git rev-list --count "$ref"..HEAD 2>/dev/null || echo 0)"
   [ "$ahead" -gt 0 ] || return 0
+  repo_url="$(_repo_web_url 2>/dev/null || true)"
   printf '%s── recent commits ──%s\n' "$C_DIM" "$C_RESET"
   git --no-pager log --oneline --no-decorate -n "$COMMITS_PANE_MAX" "$ref"..HEAD 2>/dev/null \
-    | awk -v c="$C_YELLOW" -v r="$C_RESET" '
+    | awk -v c="$C_YELLOW" -v r="$C_RESET" -v u="$repo_url" '
         { hash = substr($1, 1, 7); $1 = ""; msg = substr($0, 2);
-          printf "  %s%s%s %s\n", c, hash, r, msg }'
+          if (u != "")
+            printf "  %s\033]8;;%s/commit/%s\033\\%s\033]8;;\033\\%s %s\n", c, u, hash, hash, r, msg
+          else
+            printf "  %s%s%s %s\n", c, hash, r, msg
+        }'
   if [ "$ahead" -gt "$COMMITS_PANE_MAX" ]; then
     printf '  %s… and %d more%s\n' "$C_DIM" "$((ahead - COMMITS_PANE_MAX))" "$C_RESET"
   fi
