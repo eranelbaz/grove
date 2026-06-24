@@ -91,6 +91,7 @@ main() {
     migrate|mv)     shift; cmd_migrate "$@" ;;
     _pane)          shift; _cmd_pane "$@" ;;
     _pin)           shift; _cmd_pin "$@" ;;
+    _attached)      shift; _cmd_attached_spawn "$@" ;;
     _setup)         shift; _cmd_setup "$@" ;;
     help|-h|--help) usage ;;
     *)              die "unknown command '$cmd' — try: grove help" ;;

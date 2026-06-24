@@ -6,7 +6,7 @@ cmd_create() {
   require_tmux
   require_repo
   local branch="$1" from="${2:-}"
-  local root wt base
+  local root wt base session repo
   root="$(main_root)"; wt="$root/.worktrees/$branch"
   base="${from:-$(git rev-parse --abbrev-ref HEAD)}"
 
@@ -18,5 +18,14 @@ cmd_create() {
     info "new branch '$branch' from '$base'"
     git worktree add -b "$branch" "$wt" "$base"
   fi
-  _start_session "$branch" "$wt" "$base" "$GROVE_BIN _setup '$branch' '$wt' '$from'"
+
+  session="$(_session_for "$branch")"
+  repo="$(basename "$root")"
+  info "starting session: $session"
+  tmux new-session -d -s "$session" -c "$wt"
+  _tag_session "$session" "$repo" "$branch" "$wt" "$base"
+  tmux set-hook -t "$session" client-attached \
+    "run-shell -b \"$GROVE_BIN _attached '$session'\""
+  tmux send-keys -t "$session" "$GROVE_BIN _setup '$branch' '$wt' '$from'" Enter
+  attach "$session"
 }

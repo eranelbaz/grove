@@ -84,6 +84,19 @@ _cmd_pin() {
   _spawn_grove_panes "$target" "$wt"
 }
 
+# One-shot client-attached handler used by cmd_create. Splits happen here (not
+# pre-attach) so they land against the actual client-sized window — pre-attach
+# splits can race with switch-client's resize and end up against the wrong dims.
+_cmd_attached_spawn() {
+  local session="${1:-}"
+  [ -n "$session" ] || return 0
+  local wt
+  wt="$(tmux show-options -t "$session" -v @grove-worktree 2>/dev/null || true)"
+  [ -n "$wt" ] || return 0
+  tmux set-hook -t "$session" -u client-attached
+  _reset_panes "$session" "$wt"
+}
+
 _restart_session_at() {
   local branch="$1" wt="$2" session base existing_wt
   command -v tmux >/dev/null 2>&1 || return 0
