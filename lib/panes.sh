@@ -28,13 +28,14 @@ _collate_diff_streams() {
 }
 
 _render_diff_tree() {
-  local anchor="$1" label="$2" merged
+  local anchor="$1" label="$2" merged root
   merged="$(_collate_diff_streams "$anchor")"
   if [ -z "$merged" ]; then
     printf '%s(clean — no changes vs %s)%s\n' "$C_DIM" "$label" "$C_RESET"
     return
   fi
-  printf '%s\n' "$merged" | awk -F'\t' '
+  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  printf '%s\n' "$merged" | awk -F'\t' -v root="$root" '
     BEGIN { prev_n = 0 }
     {
       status = $1; add = $2; del = $3; path = $4
@@ -62,7 +63,10 @@ _render_diff_tree() {
         del_disp = (del == "0") ? ""        : sprintf(" \033[31m-%s\033[0m", del)
         stat_disp = add_disp del_disp
       }
-      printf "%s\033[%sm%s\033[0m %s%s\n", indent, badge_col, status, parts[n], stat_disp
+      name = parts[n]
+      if (root != "" && status != "D")
+        name = sprintf("\033]8;;file://%s/%s\033\\%s\033]8;;\033\\", root, path, parts[n])
+      printf "%s\033[%sm%s\033[0m %s%s\n", indent, badge_col, status, name, stat_disp
       for (i = 1; i <= n; i++) prev[i] = parts[i]
       prev_n = n
     }'
