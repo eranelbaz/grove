@@ -22,7 +22,6 @@ _start_session() {
   repo="$(basename "$(main_root)")"
   if tmux has-session -t "$session" 2>/dev/null; then
     _tag_session "$session" "$repo" "$branch" "$wt" "$base"
-    _install_window_hook "$session"
     info "attaching existing session: $session"; attach "$session"; return
   fi
   info "starting session: $session"
@@ -30,8 +29,6 @@ _start_session() {
   read -r cols rows <<<"$(_client_size)"
   tmux new-session -d -s "$session" -c "$wt" -x "$cols" -y "$rows"
   _tag_session "$session" "$repo" "$branch" "$wt" "$base"
-  _install_window_hook "$session"
-  _spawn_grove_panes "$session" "$wt"
   if [ -n "$setup_cmd" ]; then
     tmux send-keys -t "$session" "$setup_cmd" Enter
   fi
