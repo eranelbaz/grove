@@ -13,6 +13,7 @@ _tag_session() {
   tmux set-option -t "$session" -q @grove-branch "$branch"
   tmux set-option -t "$session" -q @grove-worktree "$wt"
   [ -n "$base" ] && tmux set-option -t "$session" -q @grove-base "$base"
+  tmux set-option -t "$session" -q status-left-length "$(( ${#session} + 10 ))"
   return 0
 }
 

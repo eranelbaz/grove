@@ -20,6 +20,7 @@ cmd_attach() {
   base="$(_default_base)"
 
   if tmux has-session -t "$session" 2>/dev/null; then
+    tmux set-option -t "$session" -q status-left-length "$(( ${#session} + 10 ))"
     info "attaching existing session: $session"; attach "$session"; return
   fi
   if [ ! -d "$wt" ]; then
