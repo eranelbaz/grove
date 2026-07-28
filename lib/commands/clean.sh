@@ -53,11 +53,15 @@ _clean_one() {
   fi
   git worktree prune
 
-  if [ "$removed" -eq 1 ] && [ -t 0 ] && git show-ref --verify --quiet "refs/heads/$branch"; then
-    read -r -p "delete branch '$branch'? [y/N] " ans
-    case "$ans" in
-      y|Y) git branch -D "$branch" && info "deleted branch $branch" ;;
-      *)   info "kept branch $branch" ;;
-    esac
+  if [ "$removed" -eq 1 ] && git show-ref --verify --quiet "refs/heads/$branch"; then
+    if [ -n "$force" ]; then
+      git branch -D "$branch" && info "deleted branch $branch"
+    elif [ -t 0 ]; then
+      read -r -p "delete branch '$branch'? [y/N] " ans
+      case "$ans" in
+        y|Y) git branch -D "$branch" && info "deleted branch $branch" ;;
+        *)   info "kept branch $branch" ;;
+      esac
+    fi
   fi
 }
