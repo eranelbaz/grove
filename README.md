@@ -32,6 +32,14 @@ Then reload: `source ~/.zshrc` (or open a fresh terminal). Verify with `which gr
 
 Requires `bash` 3.2+, `git` 2.5+, and `tmux`.
 
+## Configuration
+
+Set these in your shell (`~/.zshrc` / `~/.bashrc`) to tune grove per-user:
+
+```bash
+export GROVE_DIFF_PANE_WIDTH_PCT=30   # right-side diff pane width, % of window (default 20)
+```
+
 ## Commands
 
 ```
