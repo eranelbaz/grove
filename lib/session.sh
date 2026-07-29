@@ -17,6 +17,17 @@ _tag_session() {
   return 0
 }
 
+# grove resolves its pane-sizing tunables from the environment at startup, but
+# create spawns panes from the client-attached hook — a run-shell child that
+# inherits the tmux server's environment, not the user's shell. Any override
+# (e.g. GROVE_DIFF_PANE_WIDTH_PCT) would be missing there and the panes would
+# fall back to defaults, sizing differently than an interactive `grove reset`.
+# Push the resolved values into the tmux environment so hook-spawned grove
+# resolves the same sizes.
+_export_grove_env() {
+  tmux set-environment -g GROVE_DIFF_PANE_WIDTH_PCT "$DIFF_PANE_WIDTH_PCT"
+}
+
 # Create a detached session sized to the attaching client, then tag it. Sizing
 # at new-session time is what makes split-window resolve pane percentages
 # against real dims (see _client_size) — every session must go through here so
@@ -27,6 +38,7 @@ _new_grove_session() {
   read -r cols rows <<<"$(_client_size)"
   tmux new-session -d -s "$session" -c "$wt" -x "$cols" -y "$rows"
   _tag_session "$session" "$repo" "$branch" "$wt" "$base"
+  _export_grove_env
 }
 
 _start_session() {
