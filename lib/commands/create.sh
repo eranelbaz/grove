@@ -22,8 +22,7 @@ cmd_create() {
   session="$(_session_for "$branch")"
   repo="$(basename "$root")"
   info "starting session: $session"
-  tmux new-session -d -s "$session" -c "$wt"
-  _tag_session "$session" "$repo" "$branch" "$wt" "$base"
+  _new_grove_session "$session" "$wt" "$repo" "$branch" "$base"
   tmux set-hook -t "$session" client-attached \
     "run-shell -b \"$GROVE_BIN _attached '$session'\""
   tmux send-keys -t "$session" "$GROVE_BIN _setup '$branch' '$wt' '$from'" Enter

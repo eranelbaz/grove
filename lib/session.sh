@@ -17,6 +17,18 @@ _tag_session() {
   return 0
 }
 
+# Create a detached session sized to the attaching client, then tag it. Sizing
+# at new-session time is what makes split-window resolve pane percentages
+# against real dims (see _client_size) — every session must go through here so
+# create/attach/reset can't drift apart again.
+_new_grove_session() {
+  local session="$1" wt="$2" repo="$3" branch="$4" base="${5:-}"
+  local cols rows
+  read -r cols rows <<<"$(_client_size)"
+  tmux new-session -d -s "$session" -c "$wt" -x "$cols" -y "$rows"
+  _tag_session "$session" "$repo" "$branch" "$wt" "$base"
+}
+
 _start_session() {
   local branch="$1" wt="$2" base="${3:-}" setup_cmd="${4:-}" session repo
   session="$(_session_for "$branch")"
@@ -26,10 +38,7 @@ _start_session() {
     info "attaching existing session: $session"; attach "$session"; return
   fi
   info "starting session: $session"
-  local cols rows
-  read -r cols rows <<<"$(_client_size)"
-  tmux new-session -d -s "$session" -c "$wt" -x "$cols" -y "$rows"
-  _tag_session "$session" "$repo" "$branch" "$wt" "$base"
+  _new_grove_session "$session" "$wt" "$repo" "$branch" "$base"
   if [ -n "$setup_cmd" ]; then
     tmux send-keys -t "$session" "$setup_cmd" Enter
   fi
