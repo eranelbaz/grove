@@ -18,9 +18,11 @@
 #                                        Outside any repo: a tree of every running
 #                                        grove session grouped by repo. The first column
 #                                        is the index consumed by `grove attach -i`.
-#   grove clean <branch>... [-f]         Run teardown, kill session, remove worktree,
+#   grove clean <branch>... | -i <index>... [-f]
+#                                        Run teardown, kill session, remove worktree,
 #                                        offer to delete the branch. Accepts multiple
-#                                        branches — failures on one don't stop the rest.
+#                                        branches or -i indices from `grove list`
+#                                        — failures on one don't stop the rest.
 #   grove base [<branch>]                Show or set the base branch for the current
 #                                        session — drives the right-side diff pane.
 #   grove reset [<branch>...]            Kill the right-side diff pane and respawn it.

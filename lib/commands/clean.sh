@@ -4,15 +4,35 @@
 cmd_clean() {
   require_repo
 
-  local force="" branches=()
+  local force="" branches=() indices=() idx_mode=0
   while [ $# -gt 0 ]; do
     case "$1" in
-      -f|--force) force="--force" ;;
-      *)          branches+=("$1") ;;
+      -f|--force)  force="--force"; idx_mode=0 ;;
+      -i|--index)  idx_mode=1 ;;
+      *[!0-9]*|'') idx_mode=0; branches+=("$1") ;;
+      *)           if [ "$idx_mode" = 1 ]; then indices+=("$1"); else branches+=("$1"); fi ;;
     esac
     shift
   done
-  [ "${#branches[@]}" -ge 1 ] || die "usage: grove clean <branch>... [-f]"
+  [ "$idx_mode" = 0 ] || [ "${#indices[@]}" -ge 1 ] || die "grove clean: -i requires at least one index"
+  [ "${#branches[@]}" -ge 1 ] || [ "${#indices[@]}" -ge 1 ] \
+    || die "usage: grove clean <branch>... | -i <index>... [-f]"
+
+  # Resolve indices to branch names against a single snapshot before any removal —
+  # removing a worktree renumbers the rest, so lazy resolution would target wrong rows.
+  if [ "${#indices[@]}" -ge 1 ]; then
+    local -a paths=()
+    local p
+    while read -r p; do paths+=("$p"); done < <(_repo_worktree_paths)
+    local n idx
+    for idx in "${indices[@]}"; do
+      if [ "$idx" -ge "${#paths[@]}" ]; then
+        printf 'grove: index %s out of range (0..%s) — skipping\n' "$idx" "$(( ${#paths[@]} - 1 ))" >&2
+        continue
+      fi
+      branches+=("$(git -C "${paths[$idx]}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')")
+    done
+  fi
 
   local arg
   for arg in "${branches[@]}"; do
