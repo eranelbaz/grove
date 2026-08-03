@@ -10,11 +10,14 @@
 #   grove create <branch> [from-branch]  New branch + worktree + tmux session.
 #                                        from-branch defaults to the current branch
 #                                        and becomes the session's diff-pane base.
-#   grove attach <branch>                Worktree + session for a branch that already
+#   grove attach <branch> | -i <index>   Worktree + session for a branch that already
 #                                        exists (or reattach if the session is live).
+#                                        -i <index> attaches the worktree/session at
+#                                        that row of `grove list`.
 #   grove list                           In a repo: list its worktrees + session state.
 #                                        Outside any repo: a tree of every running
-#                                        grove session grouped by repo.
+#                                        grove session grouped by repo. The first column
+#                                        is the index consumed by `grove attach -i`.
 #   grove clean <branch>... [-f]         Run teardown, kill session, remove worktree,
 #                                        offer to delete the branch. Accepts multiple
 #                                        branches — failures on one don't stop the rest.

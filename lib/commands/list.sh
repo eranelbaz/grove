@@ -105,6 +105,15 @@ _pr_format() {
     "$color" "$url" "$number" "$label" "$C_RESET" "$pad" ""
 }
 
+_repo_worktree_paths() {
+  git worktree list --porcelain | awk '/^worktree /{print $2}'
+}
+
+_global_session_rows() {
+  tmux list-sessions -F '#{session_name}|#{@grove-repo}|#{@grove-branch}|#{@grove-worktree}' 2>/dev/null \
+    | awk -F'|' '$2 != ""' | sort -t'|' -k2,2 -k3,3
+}
+
 cmd_list() {
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     _list_repo
@@ -134,8 +143,10 @@ _list_repo() {
     [ -n "$ports" ] && [ "$(( ${#ports} + 1 ))" -gt "$max_ports" ] && max_ports="$(( ${#ports} + 1 ))"
     lives+=("$live"); branches+=("$branch"); pr_lines+=("$pr_line")
     paths+=("$path"); ports_list+=("$ports")
-  done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
-  local i pr_part ports_part
+  done < <(_repo_worktree_paths)
+  local i pr_part ports_part n=${#paths[@]} max_idx idx_w
+  max_idx=$(( n - 1 )); [ "$max_idx" -lt 0 ] && max_idx=0
+  idx_w=${#max_idx}
   for i in "${!paths[@]}"; do
     if [ "$show_pr" = 1 ]; then
       pr_part="$(_pr_format "${pr_lines[$i]}")  "
@@ -147,16 +158,15 @@ _list_repo() {
     else
       ports_part=""
     fi
-    printf '%b  %-*s  %s%s%s\n' \
-      "${lives[$i]}" "$max_branch" "${branches[$i]}" "$pr_part" "$ports_part" "${paths[$i]}"
+    printf '%-*s  %b  %-*s  %s%s%s\n' \
+      "$idx_w" "$i" "${lives[$i]}" "$max_branch" "${branches[$i]}" "$pr_part" "$ports_part" "${paths[$i]}"
   done
 }
 
 _list_global() {
   require_tmux
   local rows
-  rows="$(tmux list-sessions -F '#{session_name}|#{@grove-repo}|#{@grove-branch}|#{@grove-worktree}' 2>/dev/null \
-    | awk -F'|' '$2 != ""' | sort -t'|' -k2,2 -k3,3 || true)"
+  rows="$(_global_session_rows || true)"
   if [ -z "$rows" ]; then
     printf 'no grove sessions running (run `grove create <branch>` from a repo)\n' >&2
     return
@@ -170,7 +180,9 @@ _list_global() {
     g_repos+=("$repo"); g_branches+=("$branch"); g_paths+=("$path")
     g_prs+=("$pr_line"); g_ports+=("$ports")
   done <<< "$rows"
-  local n="${#g_repos[@]}" i j k group_repo has_pr max_branch max_ports plen pr_part ports_part
+  local n="${#g_repos[@]}" i j k group_repo has_pr max_branch max_ports plen pr_part ports_part max_idx idx_w
+  max_idx=$(( n - 1 )); [ "$max_idx" -lt 0 ] && max_idx=0
+  idx_w=${#max_idx}
   i=0
   while [ "$i" -lt "$n" ]; do
     group_repo="${g_repos[$i]}"
@@ -199,8 +211,8 @@ _list_global() {
       else
         ports_part=""
       fi
-      printf '  %s● live%s  %-*s  %s%s%s\n' \
-        "$C_GREEN" "$C_RESET" "$max_branch" "${g_branches[$k]}" "$pr_part" "$ports_part" "${g_paths[$k]}"
+      printf '  %-*s  %s● live%s  %-*s  %s%s%s\n' \
+        "$idx_w" "$k" "$C_GREEN" "$C_RESET" "$max_branch" "${g_branches[$k]}" "$pr_part" "$ports_part" "${g_paths[$k]}"
       k=$((k+1))
     done
     i="$j"
